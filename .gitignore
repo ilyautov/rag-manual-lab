@@ -1,0 +1,5 @@
+out/
+build/book.html
+build/numbers.json
+node_modules/
+.tmp/

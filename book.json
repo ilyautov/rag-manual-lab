@@ -1,0 +1,31 @@
+{
+  "title": "RAG:\nпоиск, контекст,\nответ",
+  "subtitle": "Как построить помощника, который отвечает по базе документов, ссылается на источник и честно отказывается, когда ответа нет. С воспроизводимой лабораторией на TypeScript.",
+  "eyebrow": "СЕРИЯ «LLM НА ПРАКТИКЕ» · КНИГА 3",
+  "edition": "2026.11.10",
+  "author": "Утов Илья",
+  "contact": "https://t.me/gorilla_under_hood",
+  "license": "Текст и схемы: CC BY-NC 4.0. Код лаборатории: MIT.",
+  "copyright": "© 2026 Утов Илья. Текст и оригинальные схемы распространяются на условиях Creative Commons Attribution-NonCommercial 4.0 International. Код лаборатории распространяется по лицензии MIT. Шрифты Noto Sans и Liberation Mono распространяются по SIL Open Font License 1.1. Магазин «Полка», его регламенты, сроки и суммы выдуманы и не описывают действующее законодательство.",
+  "changes": "Редакция 2026.11.10: первая публикация. Все числа в тексте получены кодом лаборатории (npm run numbers) и проверены тестами (npm test).",
+  "footer": "RAG: поиск, контекст, ответ · редакция 2026.11.10",
+  "pdfName": "RAG_поиск_контекст_ответ.pdf",
+  "chapters": [
+    "00-intro.md",
+    "01-when.md",
+    "02-prepare.md",
+    "03-chunking.md",
+    "04-bm25.md",
+    "05-vector.md",
+    "06-hybrid.md",
+    "07-rerank.md",
+    "08-answer.md",
+    "09-access.md",
+    "10-eval-search.md",
+    "11-eval-answer.md",
+    "12-production.md",
+    "13-answers.md",
+    "14-refs.md"
+  ],
+  "coverSvg": "<svg viewBox=\"0 0 660 230\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"Book Sans\" style=\"width:100%;height:auto\"><g fill=\"none\" stroke=\"#3A4540\" stroke-width=\"1.2\"><path d=\"M120 60 C 200 60, 220 115, 300 115\"/><path d=\"M120 115 L 300 115\"/><path d=\"M120 170 C 200 170, 220 115, 300 115\"/><path d=\"M380 115 L 450 115\"/><path d=\"M530 115 L 590 115\"/></g><g><rect x=\"30\" y=\"38\" width=\"90\" height=\"44\" rx=\"4\" fill=\"#2B3631\"/><rect x=\"42\" y=\"50\" width=\"56\" height=\"4\" fill=\"#A8DDE1\"/><rect x=\"42\" y=\"60\" width=\"40\" height=\"4\" fill=\"#5E6B64\"/><rect x=\"42\" y=\"70\" width=\"48\" height=\"4\" fill=\"#5E6B64\"/></g><g><rect x=\"30\" y=\"93\" width=\"90\" height=\"44\" rx=\"4\" fill=\"#2B3631\"/><rect x=\"42\" y=\"105\" width=\"44\" height=\"4\" fill=\"#F4C77D\"/><rect x=\"42\" y=\"115\" width=\"60\" height=\"4\" fill=\"#5E6B64\"/><rect x=\"42\" y=\"125\" width=\"36\" height=\"4\" fill=\"#5E6B64\"/></g><g><rect x=\"30\" y=\"148\" width=\"90\" height=\"44\" rx=\"4\" fill=\"#2B3631\"/><rect x=\"42\" y=\"160\" width=\"52\" height=\"4\" fill=\"#A8DDE1\"/><rect x=\"42\" y=\"170\" width=\"38\" height=\"4\" fill=\"#5E6B64\"/><rect x=\"42\" y=\"180\" width=\"58\" height=\"4\" fill=\"#5E6B64\"/></g><circle cx=\"340\" cy=\"115\" r=\"40\" fill=\"none\" stroke=\"#B5DD4C\" stroke-width=\"2\"/><circle cx=\"340\" cy=\"115\" r=\"22\" fill=\"none\" stroke=\"#B5DD4C\" stroke-width=\"1.2\"/><circle cx=\"340\" cy=\"115\" r=\"5\" fill=\"#B5DD4C\"/><g><rect x=\"450\" y=\"85\" width=\"80\" height=\"60\" rx=\"4\" fill=\"#2B3631\"/><rect x=\"462\" y=\"97\" width=\"56\" height=\"5\" fill=\"#B5DD4C\"/><rect x=\"462\" y=\"109\" width=\"56\" height=\"5\" fill=\"#A8DDE1\"/><rect x=\"462\" y=\"121\" width=\"40\" height=\"5\" fill=\"#5E6B64\"/></g><g><rect x=\"590\" y=\"95\" width=\"50\" height=\"40\" rx=\"20\" fill=\"#B5DD4C\"/><text x=\"615\" y=\"120\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#1F2724\">[1]</text></g><text x=\"75\" y=\"215\" text-anchor=\"middle\" font-size=\"11\" fill=\"#8E978F\">документы</text><text x=\"340\" y=\"215\" text-anchor=\"middle\" font-size=\"11\" fill=\"#8E978F\">поиск</text><text x=\"490\" y=\"215\" text-anchor=\"middle\" font-size=\"11\" fill=\"#8E978F\">контекст</text><text x=\"615\" y=\"215\" text-anchor=\"middle\" font-size=\"11\" fill=\"#8E978F\">ответ</text></svg>"
+}
