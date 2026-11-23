@@ -10,6 +10,8 @@ import { pathToFileURL } from 'node:url';
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = join(ROOT, 'out');
 const book = JSON.parse(readFileSync(join(ROOT, 'book.json'), 'utf8'));
+// редакция в футере подставляется из edition, чтобы дата не отставала от обложки
+book.footer = `${book.footer} · редакция ${book.edition}`;
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 /** Проверка инструментов до работы: без неё падение выглядит сырым ENOENT без пояснений. */
