@@ -4,7 +4,11 @@
 
 Третья книга серии после [«Теории LLM и практики AI-лаборатории»](https://github.com/ilyautov/llm-manual-lab). Там RAG занимал одну главу, здесь он разобран от сырого документа до оценки ответа.
 
-Автор: Утов Илья · [Telegram-канал](https://t.me/gorilla_under_hood) · Редакция 2026.11.10 · [Журнал изменений](CHANGELOG.md)
+[![Тесты](https://img.shields.io/badge/тесты-51-2ea44f?style=flat-square)](../../actions) [![Редакция](https://img.shields.io/badge/редакция-2026.11.23-3553ff?style=flat-square)](CHANGELOG.md) [![Книга: CC BY-NC 4.0](https://img.shields.io/badge/книга-CC%20BY--NC%204.0-8a8f98?style=flat-square)](LICENSE-BOOK.md) [![Код: MIT](https://img.shields.io/badge/код-MIT-8a8f98?style=flat-square)](LICENSE-CODE.txt)
+
+**[Скачать PDF](../../releases/latest)** · [Журнал изменений](CHANGELOG.md) · [Сообщить об ошибке](../../issues/new/choose) · [Интерактивный конвейер](interactive/index.html) · [Рабочие бланки](templates/README.md)
+
+Автор: Утов Илья · [Telegram-канал](https://t.me/gorilla_under_hood)
 
 ---
 
@@ -45,7 +49,7 @@
 Нужен Node.js 24. Внешних пакетов и сети не нужно.
 
 ```bash
-npm test                                   # 49 тестов: ключевые числа книги
+npm test                                   # тесты: ключевые числа книги, счёт печатает npm test
 npm run ask -- "можно ли вернуть уценённый товар"
 npm run ask -- "сколько бонусов может начислить старший смены" --senior
 ```
@@ -79,13 +83,18 @@ npm run build         # собрать PDF (нужны pandoc, pdftotext, pdffon
 | `rerank.ts` | двухэтапный поиск, MMR | реранкер детерминированный, не cross-encoder |
 | `answer.ts` | проверка опоры и отказ | ответ собирает шаблон, LLM не вызывается |
 | `judge.ts` | каппа Коэна | судья детерминированный, метки человека поставлены автором |
+| `rewrite.ts` | словарь переформулировок и слияние вариантов | словарь явный, без модели; живые системы переформулируют моделью |
 | `prod.ts` | хеши, кеш, карантин | журнал запросов синтетический |
 
 Выводы о сравнении методов сделаны на маленьком учебном корпусе и переносятся на ваши данные только как гипотеза.
 
 ## Сборка PDF
 
-`node build/build.mjs` из корня проекта: Markdown глав из `chapters/` → pandoc → HTML → PDF через headless Chrome. Числа подставляются из `build/numbers.json`, сборка падает на отсутствующем ключе. Результат: `out/RAG_поиск_контекст_ответ.pdf`.
+`npm run build` (или `node build/build.mjs` из корня): Markdown глав из `chapters/` → pandoc → HTML → PDF через headless Chrome. Нужны pandoc, poppler-utils (`pdftotext`, `pdffonts`) и Google Chrome; на Linux и Windows путь к Chrome задаётся переменной `CHROME_PATH`. Числа подставляются из `build/numbers.json`, сборка падает на отсутствующем ключе и проверяет результат: заголовки, встроенные шрифты, неподставленные значения. Результат: `out/RAG_поиск_контекст_ответ.pdf`. Та же сборка выполняется в CI на каждый коммит.
+
+## Нашли ошибку?
+
+Откройте [issue](../../issues/new/choose) с номером страницы и цитатой. Исправления попадают в следующую редакцию, авторы замечаний отмечаются в [CHANGELOG](CHANGELOG.md). Правила книги и лаборатории описаны в [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Лицензии
 

@@ -2,7 +2,7 @@
   "name": "rag-book",
   "private": true,
   "type": "module",
-  "version": "2026.11.10",
+  "version": "2026.11.23",
   "description": "Лаборатория к книге «RAG: поиск, контекст, ответ»",
   "license": "MIT",
   "engines": { "node": ">=24" },

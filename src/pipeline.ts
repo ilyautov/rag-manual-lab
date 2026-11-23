@@ -2,9 +2,9 @@
 import { DOCS, looksLikeInjection, type Doc } from './prepare.ts';
 import { chunkCorpus, structuralChunks, type Chunk } from './chunk.ts';
 import { buildIndex, bm25Search, type Bm25Index, type Hit } from './bm25.ts';
-import { buildVectorIndex, type VectorIndex } from './vector.ts';
-import { embed, dot } from './embed.ts';
+import { buildVectorIndex, vectorSearch, type VectorIndex } from './vector.ts';
 import { rrf, minMaxFusion } from './hybrid.ts';
+import { expandQuery } from './rewrite.ts';
 import { rerankScore, mmr } from './rerank.ts';
 import { packContext } from './context.ts';
 import { compose, checkSupport } from './answer.ts';
@@ -29,11 +29,13 @@ export interface Config {
   acl: 'before' | 'none';
   quarantine: boolean;
   tau: number; // порог отказа: минимальное покрытие вопроса лучшим фрагментом
+  /** Переписывание запроса: разговорные слова заменяются словами корпуса до поиска. */
+  expand: boolean;
 }
 
 export const DEFAULT: Config = {
   retriever: 'rrf', candidates: 20, rerank: true, mmr: false, lambda: 0.7, budget: 300, maxChunks: 4,
-  role: 'all', asOf: TODAY, freshness: true, acl: 'before', quarantine: true, tau: 0.4,
+  role: 'all', asOf: TODAY, freshness: true, acl: 'before', quarantine: true, tau: 0.4, expand: false,
 };
 
 export interface Engine { docs: Doc[]; chunks: Chunk[]; byId: Map<string, Chunk>; docOf: Map<string, Doc>; bm25: Bm25Index; vec: VectorIndex }
@@ -65,13 +67,14 @@ function filterHits(hits: Hit[], allow: Set<string>, k: number): Hit[] {
 export function firstStage(e: Engine, query: string, cfg: Config): Hit[] {
   const allow = allowedChunks(e, cfg);
   const all = e.chunks.length;
-  const lex = () => filterHits(bm25Search(e.bm25, query, all), allow, cfg.candidates);
-  const vec = () => {
-    const q = embed(query);
-    const hits = e.vec.ids.map((id, i) => ({ id, score: dot(q, e.vec.vecs[i]) }))
-      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
-    return filterHits(hits, allow, cfg.candidates);
+  // лексический этап ищет по каждому варианту запроса и сводит списки рангов
+  const lex = () => {
+    const variants = cfg.expand ? expandQuery(query) : [query];
+    const lists = variants.map((v) => bm25Search(e.bm25, v, all));
+    const merged = lists.length === 1 ? lists[0] : rrf(lists);
+    return filterHits(merged, allow, cfg.candidates);
   };
+  const vec = () => filterHits(vectorSearch(e.vec, query, all), allow, cfg.candidates);
   if (cfg.retriever === 'bm25') return lex();
   if (cfg.retriever === 'vector') return vec();
   if (cfg.retriever === 'rrf') return rrf([lex(), vec()]).slice(0, cfg.candidates);

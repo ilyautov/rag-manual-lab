@@ -12,6 +12,21 @@ const OUT = join(ROOT, 'out');
 const book = JSON.parse(readFileSync(join(ROOT, 'book.json'), 'utf8'));
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
+/** Проверка инструментов до работы: без неё падение выглядит сырым ENOENT без пояснений. */
+function preflight() {
+  const missing = [];
+  for (const tool of ['pandoc', 'pdftotext', 'pdffonts']) {
+    try { execFileSync('which', [tool], { stdio: 'ignore' }); } catch { missing.push(tool); }
+  }
+  try { execFileSync(CHROME, ['--version'], { stdio: 'ignore' }); }
+  catch { missing.push('Google Chrome (путь задайте переменной CHROME_PATH)'); }
+  if (missing.length) {
+    throw new Error(`Не найдены инструменты сборки: ${missing.join(', ')}.` +
+      ' Нужны pandoc, poppler-utils (команды pdftotext и pdffonts) и Google Chrome;' +
+      ' путь к Chrome на Linux и Windows задаётся переменной окружения CHROME_PATH.');
+  }
+}
+
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 function flatten(obj, prefix = '', out = {}) {
@@ -156,6 +171,7 @@ function markerPages(count, texts) {
 }
 
 async function main() {
+  preflight();
   mkdirSync(OUT, { recursive: true });
   const numbers = loadNumbers();
   const chapters = book.chapters.map((f) => renderChapter(f, numbers));

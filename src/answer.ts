@@ -14,14 +14,6 @@ export function sentences(text: string): string[] {
   return text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
 }
 
-/** Доля слов вопроса (с весом IDF), которые есть в тексте. */
-export function coverage(index: Bm25Index, query: string, text: string): number {
-  const q = [...new Set(terms(query))];
-  const t = new Set(terms(text));
-  const wsum = q.reduce((s, w) => s + idf(index, w), 0);
-  return wsum ? q.reduce((s, w) => s + (t.has(w) ? idf(index, w) : 0), 0) / wsum : 0;
-}
-
 export interface Composed { answer: string; refused: boolean; cited: number | null; best: number }
 
 // Вопрос о количестве или сроке: общие вопросительные слова, а не фразы из тестового набора.

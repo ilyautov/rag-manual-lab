@@ -13,6 +13,8 @@ export function cohenKappa(a: Label[], b: Label[]): { po: number; pe: number; ka
   const cats = [...new Set([...a, ...b])];
   const po = a.filter((x, i) => x === b[i]).length / n;
   const pe = cats.reduce((s, c) => s + (a.filter((x) => x === c).length / n) * (b.filter((x) => x === c).length / n), 0);
+  // при pe = 1 ожидаемое согласие полное: оба оценщика всегда правы одинаково,
+// знаменатель обращается в ноль; по конвенции считаем каппу равной 1 (расхождений нет)
   return { po, pe, kappa: pe === 1 ? 1 : (po - pe) / (1 - pe) };
 }
 

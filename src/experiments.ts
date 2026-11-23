@@ -7,9 +7,11 @@ import { prepare, cleanText, boilerplateLines, shingles, jaccard, parseSections,
 import { QUESTIONS, type TestQuestion } from './questions.ts';
 import { structuralChunks, fixedChunks, chunkCorpus, type Chunk } from './chunk.ts';
 import { buildIndex, bm25Search, tfidfSearch, idf, bm25Term, type Hit } from './bm25.ts';
+import { buildVectorIndex, vectorSearch } from './vector.ts';
 import { embed, cosine, DIM } from './embed.ts';
 import { rrf, minMaxFusion, rawSum, minMax } from './hybrid.ts';
 import { mmr } from './rerank.ts';
+import { rewriteQuery } from './rewrite.ts';
 import { packContext, edgesOrder } from './context.ts';
 import { checkSupport, compose, REFUSAL } from './answer.ts';
 import { recallAtK, precisionAtK, reciprocalRank, ndcgAtK, mean, dcg } from './metrics.ts';
@@ -40,7 +42,7 @@ export function corpusStats() {
   const rep = prepare();
   const text = rep.docs.map((d) => d.text).join('\n');
   const rawLen = RAW_DOCS.reduce((s, d) => s + d.raw.length, 0);
-  const cleanLen = rep.docs.reduce((s, d) => s + d.text.length, 0) + rep.duplicates.length * 0;
+  const cleanLen = rep.docs.reduce((s, d) => s + d.text.length, 0);
   const boiler = boilerplateLines(RAW_DOCS.map((d) => d.raw));
   const sample = cleanText(RAW_PDF_SAMPLE, boiler);
   const a = RAW_DOCS.find((d) => d.id === 'ret-normal')!;
@@ -80,16 +82,13 @@ export function factRecall(chunks: Chunk[], k: number, how: 'bm25' | 'vector' = 
   const idx = buildIndex(chunks);
   const byId = new Map(chunks.map((c) => [c.id, c]));
   const allowed = new Set(currentDocs(DOCS.filter((d) => canRead('senior', d)), TODAY).map((d) => d.id));
-  const vecs = how === 'vector' ? new Map(chunks.map((c) => [c.id, embed(c.text)])) : null;
+  const vecIdx = how === 'vector' ? buildVectorIndex(chunks) : null;
   let found = 0, tokens = 0;
   const foundIds: string[] = [];
   for (const q of ANSWERABLE) {
     const top2 = new Set(Object.entries(q.relevant).filter(([, g]) => g === 2).map(([d]) => d));
-    let hits: Hit[];
-    if (vecs) {
-      const qv = embed(q.q);
-      hits = chunks.map((c) => ({ id: c.id, score: cosine(qv, vecs.get(c.id)!) })).sort((a, b) => b.score - a.score);
-    } else hits = bm25Search(idx, q.q, chunks.length);
+    // векторная ветка идёт через общий vectorSearch: одна реализация вместо трёх копий перебора
+    const hits: Hit[] = vecIdx ? vectorSearch(vecIdx, q.q, chunks.length) : bm25Search(idx, q.q, chunks.length);
     const top = hits.filter((h) => allowed.has(byId.get(h.id)!.docId)).slice(0, k).map((h) => byId.get(h.id)!);
     if (top.some((c) => top2.has(c.docId) && factsIn(c.text, q.facts))) { found++; foundIds.push(q.id); }
     tokens += top.reduce((s, c) => s + estimateTokens(c.text), 0);
@@ -227,6 +226,28 @@ export function configTable() {
     rows[`${r}${rr ? '_rr' : ''}`] = { mrr: s.mrr, r4: s.r4, goldInCtx: run.filter((x) => x.goldInCtx).length, correct: run.filter((x) => x.ok).length };
   }
   return rows;
+}
+
+/**
+ * Переписывание запроса (глава 6): словарь разговорных слов заменяется словами корпуса,
+ * первый этап ищет по обоим вариантам и сводит списки RRF. Считается без реранкера,
+ * чтобы эффект переписывания не прятался за ним.
+ */
+export function rewriteExperiment() {
+  const missIds = (cfg: Config) => evalRetrieval(cfg).filter((r) => r.r4 === 0).map((r) => r.id);
+  const pair = (cfg: Config) => {
+    const plain = evalRetrieval(cfg);
+    const expand = evalRetrieval({ ...cfg, expand: true });
+    return {
+      mrr: summarize(plain).mrr, mrrExpand: summarize(expand).mrr,
+      missPlain: missIds(cfg), missExpand: missIds({ ...cfg, expand: true }),
+    };
+  };
+  const examples = ['c01', 'c05'].map((id) => {
+    const q = ANSWERABLE.find((x) => x.id === id)!;
+    return { id, from: q.q, to: rewriteQuery(q.q) };
+  });
+  return { examples, bm25: pair({ ...DEFAULT, retriever: 'bm25', rerank: false }), rrf: pair({ ...DEFAULT, retriever: 'rrf', rerank: false }) };
 }
 
 /** Ручной расчёт RRF для одного вопроса: позиции документа в двух списках. */

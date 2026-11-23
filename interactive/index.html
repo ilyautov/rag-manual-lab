@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BM25, косинус и RRF — механика поиска на мини-корпусе</title>
+<style>
+  :root { --paper:#F6F4EE; --ink:#1F2724; --lime:#B5DD4C; --blue:#A8DDE1; --amber:#F4C77D; --grey:#D9DBD3; --text:#2B302D; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--paper); color:var(--text); font:16px/1.55 Georgia, serif; }
+  header { background:var(--ink); color:var(--paper); padding:40px 24px 60px; }
+  header .kicker { color:var(--lime); font:700 12px/1.3 Arial, sans-serif; letter-spacing:.18em; }
+  header h1 { margin:12px 0 10px; font-size:clamp(26px,4vw,40px); line-height:1.08; font-weight:400; }
+  header p { max-width:760px; margin:0; color:#D9DFD9; font-size:16px; }
+  main { max-width:1000px; margin:-24px auto 50px; padding:0 24px; }
+  .card { background:#fff; border:1px solid var(--grey); border-radius:10px; padding:22px 26px; margin-bottom:22px; }
+  h2 { font:700 13px/1.3 Arial, sans-serif; letter-spacing:.12em; text-transform:uppercase; margin:0 0 14px; color:var(--ink); }
+  input[type=text] { width:100%; font:18px Georgia, serif; padding:10px 14px; border:2px solid var(--ink); border-radius:8px; background:#fff; }
+  .hint { font-size:13px; color:#5c645f; margin-top:8px; }
+  .chips { margin-top:8px }
+  .chip { display:inline-block; border:1px solid var(--ink); border-radius:999px; padding:4px 12px; margin:3px 4px 0 0; font:600 12px/1.2 Arial, sans-serif; cursor:pointer; background:#fff }
+  .chip:hover { background:var(--blue) }
+  table { width:100%; border-collapse:collapse; font:14px/1.45 Arial, sans-serif; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--grey); vertical-align:top; }
+  th { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#5c645f }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums }
+  .bar { display:inline-block; height:10px; background:var(--lime); border-radius:2px; vertical-align:middle }
+  .bar.b { background:var(--blue) }
+  .bar.a { background:var(--amber) }
+  .top td { font-weight:700 }
+  code { font:13px "Liberation Mono", Menlo, monospace; background:var(--paper); padding:1px 5px; border-radius:4px }
+  footer { border-top:1px solid var(--grey); padding:18px 24px 36px; font:13px/1.5 Arial, sans-serif; color:#5c645f; max-width:1000px; margin:0 auto }
+  a { color:var(--ink) }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">RAG: ПОИСК, КОНТЕКСТ, ОТВЕТ · ГЛАВЫ 4–6</div>
+  <h1>Один запрос, два поиска и слияние RRF</h1>
+  <p>Механика книги на шести фрагментах корпуса «Полки»: нормализация и обрезка окончаний, IDF и насыщение BM25, символьные 3-граммы вместо нейросети и сведение рангов. Точные числа книги считает лаборатория; здесь формулы можно пощупать.</p>
+</header>
+<main>
+  <div class="card">
+    <h2>Запрос</h2>
+    <input id="q" type="text" value="возрат уценки" spellcheck="false">
+    <div class="hint">Слова запроса после нормализации: <span id="terms"></span>. Попробуйте разговорный вопрос, например «можно ли вернуть уценённый товар».</div>
+  </div>
+
+  <div class="card">
+    <h2>Кандидаты: BM25, «вектор» 3-грамм и слияние RRF (k = 60)</h2>
+    <table id="tbl">
+      <thead><tr><th>Фрагмент</th><th class="num">BM25</th><th></th><th class="num">косинус</th><th></th><th class="num">RRF</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="hint">Ранг каждого фрагмента в каждом списке переводится в <code>1/(60 + ранг)</code>; суммы дают общий порядок. Верхняя строка итога выделена.</div>
+  </div>
+</main>
+<footer>
+  Интерактив к книге «RAG: поиск, контекст, ответ», редакция 2026.11.23 ·
+  <a href="https://github.com/ilyautov/rag-manual-lab">rag-manual-lab</a> ·
+  работает без сети, формулы совпадают с src/bm25.ts, src/embed.ts и src/hybrid.ts
+</footer>
+<script>
+const DOCS = [
+  ['ret-markdown#1', 'Уценённые товары. Что такое уценка. Уценённый товар продаётся со скидкой из-за дефекта, который указан при продаже.'],
+  ['ret-markdown#2', 'Уценённые товары. Возврат уценённого товара. Уценённый товар можно вернуть, только если обнаружен недостаток, который не был указан при продаже.'],
+  ['ret-normal#1', 'Возврат товара надлежащего качества. Товар надлежащего качества можно вернуть в течение 14 дней, если сохранён вид и упаковка.'],
+  ['ret-defect-v2#1', 'Возврат товара ненадлежащего качества. Покупатель может вернуть товар в течение 30 дней с момента получения.'],
+  ['bonus#1', 'Бонусная программа. Бонусами можно оплатить до 30% стоимости заказа, один бонус равен одному рублю.'],
+  ['delivery-courier-v2#1', 'Курьерская доставка бесплатна от 3000 рублей. Доставка в день заказа недоступна для крупной техники.'],
+];
+const K1 = 1.2, B = 0.75, RRK = 60;
+const ENDINGS = ['иями','ями','ами','ого','его','ому','ему','ыми','ими','ых','их','ые','ым','ую','ая','яя','ое','ее','ой','ей','ий','ый','ом','ем','ам','ям','ах','ях','ов','ев','ию','ью','ть','ет','ут','ют','ла','ли','ло','а','я','о','е','ы','и','у','ю','ь','й'];
+const STOP = new Set('и в во не что он на я с со как а то все она так его но да ты к у же вы за бы по только ее мне было вот от меня еще нет о из ему когда даже ну ли если уже или ни быть был него до вас нибудь опять уж вам ведь там потом себя ничего ей может они тут где есть надо ней для мы тебя их чем была сам чтобы без чего раз тоже себе под будет ж тогда кто этот того потому этого какой какая какие какую совсем ним здесь этом один почти мой тем нее сейчас были куда зачем всех никогда можно при наконец об другой хоть после над больше тот через эти нас про всего них много разве эту моя впрочем свою этой перед иногда лучше чуть том такой им более всегда конечно всю между сколько нужно нужен ваш'.split(' '));
+const stem = (w) => { for (const e of ENDINGS) if (w.length - e.length >= 3 && w.endsWith(e)) return w.slice(0, -e.length); return w; };
+const terms = (s) => [...new Set(s.toLowerCase().replace(/[^a-zа-яё0-9\s-]/gi, ' ').split(/\s+/).filter((w) => w && !STOP.has(w)).map(stem))];
+
+const tokenized = DOCS.map(([id, text]) => ({ id, text, t: terms(text).reduce((m, w) => (m[w] = (m[w] || 0) + 1, m), {}) }));
+const N = DOCS.length;
+const avgdl = tokenized.reduce((s, d) => s + Object.values(d.t).reduce((a, b) => a + b, 0), 0) / N;
+const df = (w) => tokenized.filter((d) => w in d.t).length;
+const idf = (w) => Math.log(1 + (N - df(w) + 0.5) / (df(w) + 0.5));
+function bm25(q, d) {
+  const dl = Object.values(d.t).reduce((a, b) => a + b, 0);
+  let s = 0;
+  for (const w of q) { const tf = d.t[w] || 0; if (!tf) continue; s += idf(w) * tf * (K1 + 1) / (tf + K1 * (1 - B + B * dl / avgdl)); }
+  return s;
+}
+// символьные 3-граммы: «игрушечный» вектор лаборатории
+const ngrams = (s) => { const t = ' ' + s.toLowerCase().replace(/[^a-zа-яё0-9\s]/gi, '').replace(/\s+/g, ' ').trim() + ' '; const m = new Map(); for (let i = 0; i + 3 <= t.length; i++) { const g = t.slice(i, i + 3); m.set(g, (m.get(g) || 0) + 1); } return m; };
+const cos = (a, b) => { let dot = 0, na = 0, nb = 0; for (const [g, x] of a) { na += x * x; const y = b.get(g); if (y) dot += x * y; } for (const [, y] of b) nb += y * y; return na && nb ? dot / Math.sqrt(na * nb) : 0; };
+
+function render() {
+  const q = document.getElementById('q').value;
+  const qt = terms(q);
+  document.getElementById('terms').textContent = qt.length ? qt.join(', ') : '(пусто после стоп-слов)';
+  const qn = ngrams(q);
+  const lex = tokenized.map((d) => ({ id: d.id, s: bm25(qt, d) })).sort((a, b) => b.s - a.s || a.id.localeCompare(b.id));
+  const vec = tokenized.map((d) => ({ id: d.id, s: cos(qn, ngrams(d.text)) })).sort((a, b) => b.s - a.s || a.id.localeCompare(b.id));
+  const rank = (list, id) => list.findIndex((x) => x.id === id) + 1;
+  const fused = tokenized.map((d) => ({ id: d.id, s: 1 / (RRK + rank(lex, d.id)) + 1 / (RRK + rank(vec, d.id)) }))
+    .sort((a, b) => b.s - a.s || a.id.localeCompare(b.id));
+  const maxB = Math.max(...lex.map((x) => x.s), 1e-9), maxV = Math.max(...vec.map((x) => x.s), 1e-9), maxF = Math.max(...fused.map((x) => x.s));
+  const textOf = Object.fromEntries(DOCS);
+  document.querySelector('#tbl tbody').innerHTML = fused.map((f, i) => {
+    const b = lex.find((x) => x.id === f.id).s, v = vec.find((x) => x.id === f.id).s;
+    return `<tr${i === 0 ? ' class="top"' : ''}><td title="${textOf[f.id]}">${f.id}</td>` +
+      `<td class="num">${b.toFixed(2)}</td><td><span class="bar" style="width:${Math.round(b / maxB * 60)}px"></span></td>` +
+      `<td class="num">${v.toFixed(3)}</td><td><span class="bar b" style="width:${Math.round(v / maxV * 60)}px"></span></td>` +
+      `<td class="num">${f.s.toFixed(4)}</td><td><span class="bar a" style="width:${Math.round(f.s / maxF * 60)}px"></span></td></tr>`;
+  }).join('');
+}
+document.getElementById('q').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

@@ -42,6 +42,7 @@ const jd = X.judgeAgreement();
 const pr = X.productionExperiment();
 const pq = X.perQuestion();
 const ct = X.configTable();
+const rw = X.rewriteExperiment();
 
 const [tv, tm, tt] = b.terms; // верну, уцененн, товар
 const row = (id: string) => b.rows.find((r) => r.id === id)!;
@@ -132,6 +133,15 @@ const numbers = {
     rrRrfUp: il(pq.rerank.rrf.up), rrRrfUpN: int(pq.rerank.rrf.up.length), rrRrfDown: il(pq.rerank.rrf.down), rrRrfDownN: int(pq.rerank.rrf.down.length),
   },
   cfgT: Object.fromEntries(Object.entries(ct).map(([k, v]) => [k, { mrr: f(v.mrr), r4: f(v.r4), gold: int(v.goldInCtx), correct: int(v.correct) }])),
+  rewrite: {
+    exFrom: rw.examples[0].from, exTo: rw.examples[0].to,
+    exFrom2: rw.examples[1].from, exTo2: rw.examples[1].to,
+    bmMrr: f(rw.bm25.mrr), bmMrrEx: f(rw.bm25.mrrExpand),
+    bmMiss: il(rw.bm25.missPlain), bmMissN: int(rw.bm25.missPlain.length), bmMissExN: int(rw.bm25.missExpand.length),
+    rrfMrr: f(rw.rrf.mrr), rrfMrrEx: f(rw.rrf.mrrExpand),
+    rrfMiss: il(rw.rrf.missPlain), rrfMissN: int(rw.rrf.missPlain.length), rrfMissExN: int(rw.rrf.missExpand.length),
+    fixedN: int(rw.bm25.missPlain.length - rw.bm25.missExpand.length),
+  },
   boot: {
     n: int(bs.n), iters: '2000', bm25Rrf: boot(bs.bm25VsRrf), bm25Vec: boot(bs.bm25VsVector), rrfVec: boot(bs.rrfVsVector), rrfRerank: boot(bs.rrfVsRerank),
     better: int(bs.better), worse: int(bs.worse), same: int(bs.n - bs.better - bs.worse),

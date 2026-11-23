@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm test
+      - run: npm run numbers
+      - name: numbers.json воспроизводим от прогона к прогону
+        run: |
+          cp build/numbers.json /tmp/numbers-1.json
+          npm run numbers
+          diff /tmp/numbers-1.json build/numbers.json
+
+  # Сборка книги в CI доказывает воспроизводимость PDF из чистого клона.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: sudo apt-get update -q && sudo apt-get install -y -q pandoc poppler-utils
+      - run: npm run build
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - uses: actions/upload-artifact@v4
+        with:
+          name: book-pdf
+          path: out/*.pdf
+          if-no-files-found: error

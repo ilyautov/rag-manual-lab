@@ -77,8 +77,9 @@ export function prepare(raws: RawDoc[] = RAW_DOCS, dupThreshold = 0.8): PrepareR
   const sh = new Map<string, Set<string>>();
   for (const d of cleaned) {
     const s = shingles(d.text);
-    const twin = docs.find((k) => jaccard(sh.get(k.id)!, s) >= dupThreshold);
-    if (twin) { duplicates.push({ kept: twin.id, dropped: d.id, jaccard: jaccard(sh.get(twin.id)!, s) }); continue; }
+    // сходство с каждым кандидатом считается один раз и попадает в отчёт без пересчёта
+    const twin = docs.map((k) => ({ id: k.id, sim: jaccard(sh.get(k.id)!, s) })).find((x) => x.sim >= dupThreshold);
+    if (twin) { duplicates.push({ kept: twin.id, dropped: d.id, jaccard: twin.sim }); continue; }
     sh.set(d.id, s);
     docs.push(d);
   }

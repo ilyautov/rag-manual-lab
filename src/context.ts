@@ -24,7 +24,3 @@ export function edgesOrder<T>(ranked: T[]): T[] {
   ranked.forEach((x, i) => (i % 2 === 0 ? head.push(x) : tail.unshift(x)));
   return [...head, ...tail];
 }
-
-export function renderContext(chunks: Chunk[]): string {
-  return chunks.map((c, i) => `[${i + 1}] (${c.docId}) ${c.text}`).join('\n');
-}
